@@ -1,1 +1,0 @@
-// Profile controller removed — placeholder.

@@ -1,19 +1,16 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:intl/intl.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:super_reminder/app/controllers/task.dart';
 import 'package:super_reminder/main.dart';
-import 'package:super_reminder/app/utils/time_utils.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 class NotifiHelper {
   Future<void> initializeNotification() async {
-    tz.initializeTimeZones();
+    tzdata.initializeTimeZones();
     final dynamic tzResult = await FlutterTimezone.getLocalTimezone();
     // Debug info to inspect the plugin return shape at runtime
     print(
@@ -72,10 +69,17 @@ class NotifiHelper {
     await flutterLocalNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        MyApp.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          '/ReminderView',
-          (route) => route.isFirst,
-        );
+        // Defer navigation until app UI is mounted and navigator is available
+        Future.delayed(const Duration(milliseconds: 300), () {
+          try {
+            MyApp.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              '/ReminderView',
+              (route) => route.isFirst,
+            );
+          } catch (_) {
+            // swallow any errors here to avoid crashing on startup
+          }
+        });
       },
     );
   }
@@ -106,32 +110,42 @@ class NotifiHelper {
     );
   }
 
-  Future<void> scheduledNotification(
-    int year,
-    int month,
-    int day,
-    int hour,
-    int minute,
-    Task task,
-  ) async {
-    final scheduledDate = DateTime(year, month, day, hour, minute);
-    final tz.TZDateTime scheduled = tz.TZDateTime.from(scheduledDate, tz.local);
+  // TODO: Refactor to use new TaskModel with BLoC
+  // Future<void> scheduledNotification(
+  //   int year,
+  //   int month,
+  //   int day,
+  //   int hour,
+  //   int minute,
+  //   TaskModel task,
+  // ) async {
+  //   final scheduledDate = DateTime(year, month, day, hour, minute);
+  //   final tz.TZDateTime scheduled = tz.TZDateTime.from(scheduledDate, tz.local);
+  //
+  //   await flutterLocalNotificationsPlugin.zonedSchedule(
+  //     id: task.id,
+  //     title: task.title,
+  //     body: task.description ?? '',
+  //     scheduledDate: scheduled,
+  //     notificationDetails: const NotificationDetails(
+  //       android: AndroidNotificationDetails(
+  //         'basic_channel',
+  //         'Basic Notifications',
+  //         channelDescription: 'Reminder notifications',
+  //       ),
+  //     ),
+  //     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+  //   );
+  // }
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: task.id?.toInt() ?? createdUniqueId(),
-      title: task.title,
-      body: task.note,
-      scheduledDate: scheduled,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'basic_channel',
-          'Basic Notifications',
-          channelDescription: 'Reminder notifications',
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-  }
+  // TODO: Refactor to use new TaskModel with BLoC
+  // Future<void> scheduledNotificationByHourMinute(
+  //   int hour,
+  //   int minute,
+  //   TaskModel task,
+  // ) async {
+  //   return scheduledNotificationByTime(hour, minute, task);
+  // }
 
   /// Request iOS/macOS permissions (no-op on Android)
   Future<void> requestIOSPermissions() async {
@@ -148,69 +162,75 @@ class NotifiHelper {
   }
 
   /// Schedule a notification for a specific hour:minute on the current day.
-  Future<void> scheduledNotificationByTime(
-    int hour,
-    int minute,
-    Task task,
-  ) async {
-    final now = DateTime.now();
-    DateTime scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
-    );
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    final tz.TZDateTime scheduled = tz.TZDateTime.from(scheduledDate, tz.local);
-
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: task.id?.toInt() ?? createdUniqueId(),
-      title: task.title,
-      body: task.note,
-      scheduledDate: scheduled,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'basic_channel',
-          'Basic Notifications',
-          channelDescription: 'Reminder notifications',
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-  }
+  // TODO: Refactor to use new TaskModel with BLoC
+  // Future<void> scheduledNotificationByTime(
+  //   int hour,
+  //   int minute,
+  //   TaskModel task,
+  // ) async {
+  //   final now = DateTime.now();
+  //   DateTime scheduledDate = DateTime(
+  //     now.year,
+  //     now.month,
+  //     now.day,
+  //     hour,
+  //     minute,
+  //   );
+  //   if (scheduledDate.isBefore(now)) {
+  //     scheduledDate = scheduledDate.add(const Duration(days: 1));
+  //   }
+  //   final tz.TZDateTime scheduled = tz.TZDateTime.from(scheduledDate, tz.local);
+  //
+  //   await flutterLocalNotificationsPlugin.zonedSchedule(
+  //     id: task.id,
+  //     title: task.title,
+  //     body: task.description ?? '',
+  //     scheduledDate: scheduled,
+  //     notificationDetails: const NotificationDetails(
+  //       android: AndroidNotificationDetails(
+  //         'basic_channel',
+  //         'Basic Notifications',
+  //         channelDescription: 'Reminder notifications',
+  //       ),
+  //     ),
+  //     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+  //   );
+  // }
 }
 
-Future<void> sReminderNotifikasi(Task task) async {
-  DateTime dateTime = DateFormat('d/M/yyyy').parse(task.date!);
-  DateTime time = parseTimeString(task.startTime.toString());
-  final scheduled = DateTime(
-    dateTime.year,
-    dateTime.month,
-    dateTime.day,
-    time.hour,
-    time.minute,
-  );
-
-  final tz.TZDateTime scheduledTz = tz.TZDateTime.from(scheduled, tz.local);
-
-  await flutterLocalNotificationsPlugin.zonedSchedule(
-    id: task.id?.toInt() ?? createdUniqueId(),
-    title: task.title,
-    body: task.note,
-    scheduledDate: scheduledTz,
-    notificationDetails: const NotificationDetails(
-      android: AndroidNotificationDetails(
-        'basic_channel',
-        'Basic Notifications',
-        channelDescription: 'Reminder notifications',
-      ),
-    ),
-    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-  );
-}
+// TODO: Refactor to use new TaskModel with BLoC
+// Future<void> sReminderNotifikasi(TaskModel task) async {
+//   DateTime dateTime = DateFormat('d/M/yyyy').parse(task.dueDate.toString());
+//   DateTime time = parseTimeString(task.startTime.toString());
+//   final scheduled = DateTime(
+//     dateTime.year,
+//     dateTime.month,
+//     dateTime.day,
+//     time.hour,
+//     time.minute,
+//   );
+//   // Ensure scheduled time is in the future (add days until it is).
+//   tz.TZDateTime scheduledTz = tz.TZDateTime.from(scheduled, tz.local);
+//   final nowTz = tz.TZDateTime.now(tz.local);
+//   while (!scheduledTz.isAfter(nowTz)) {
+//     scheduledTz = scheduledTz.add(const Duration(days: 1));
+//   }
+//
+//   await flutterLocalNotificationsPlugin.zonedSchedule(
+//     id: task.id,
+//     title: task.title,
+//     body: task.description ?? '',
+//     scheduledDate: scheduledTz,
+//     notificationDetails: const NotificationDetails(
+//       android: AndroidNotificationDetails(
+//         'basic_channel',
+//         'Basic Notifications',
+//         channelDescription: 'Reminder notifications',
+//       ),
+//     ),
+//     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+//   );
+// }
 
 Future<void> testnotifdoang() async {
   await NotifiHelper().displayNotification(

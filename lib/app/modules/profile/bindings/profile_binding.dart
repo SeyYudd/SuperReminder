@@ -1,1 +1,0 @@
-// Profile binding removed — placeholder.
